@@ -2,7 +2,7 @@ version: '2.0'
 services:
   # builds lambda package
   build:
-    image: softprops/lambda-rust
+    build: "https://github.com/nyxiative/lambda-rust.git"
     volumes:
     - .:/code
     - $HOME/.cargo/registry:/root/.cargo/registry

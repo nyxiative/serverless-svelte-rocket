@@ -2,6 +2,7 @@
 use backend_server;
 use rocket_lamb::RocketExt;
 
-fn main() {
-    backend_server::rocket().lambda().launch();
+#[tokio::main]
+async fn main() {
+    backend_server::rocket().lambda().launch().await;
 }
