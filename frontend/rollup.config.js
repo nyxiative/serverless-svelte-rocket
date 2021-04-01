@@ -5,8 +5,10 @@ import livereload from "rollup-plugin-livereload";
 import { terser } from 'rollup-plugin-terser';
 import sveltePreprocess from 'svelte-preprocess';
 import typescript from '@rollup/plugin-typescript';
-import { readdirSync } from 'fs';
+import css from 'rollup-plugin-css-only';
 import copy from 'rollup-plugin-copy'
+import alias from '@rollup/plugin-alias';
+import { readdirSync } from 'fs';
 
 const getDirectories = source =>
   readdirSync(source, { withFileTypes: true })
@@ -50,62 +52,66 @@ function createPageRollupExport(inp) {
     name: `${inp}`,
     file: `public/build/${inp}.js`,
   };
-  const cssPath = `public/build/${inp}.css`;
+  const cssPath = `${inp}.css`;
 
   let def = {
     input: input,
     output: output,
     plugins: [
-      svelte({
-        preprocess: sveltePreprocess({ sourceMap: !production }),
-        // enable run-time checks when not in production
-        dev: !production,
-        // we'll extract any component CSS out into
-        // a separate file - better for performance
-        css: (css) => {
-          css.write(cssPath);
-        },
-      }),
-      copy({
-        targets: [
-          { 
-            src: 'src/index.html',
-            dest: `public`,
-            rename: (_, extension) => `${inp === "main" ? "index" : inp}.${extension}`,
-            transform: (contents) => { console.log(contents.toString); return contents.toString().replace(/__name__/g, inp) },
-          },
-        ]
-      }),
+		svelte({
+			preprocess: sveltePreprocess({ sourceMap: !production }),
+			compilerOptions: {
+				// enable run-time checks when not in production
+				dev: !production,
+			},
+		}),
+		alias({
+			entries: [
+				// If you add a new top-level-folder besides src which you want to use, add it here
+				{ find: /^src(\/|$)/, replacement: `${__dirname}/src/` },
+			],
+		}),
+		copy({
+			targets: [
+				{ 
+				src: 'src/index.html',
+				dest: `public`,
+				rename: (_, extension) => `${inp === "main" ? "index" : inp}.${extension}`,
+				transform: (contents) => contents.toString().replace(/__name__/g, inp),
+				},
+			]
+		}),
+		css({ output: cssPath }),
 
-      // If you have external dependencies installed from
-      // npm, you'll most likely need these plugins. In
-      // some cases you'll need additional configuration -
-      // consult the documentation for details:
-      // https://github.com/rollup/plugins/tree/master/packages/commonjs
-      resolve({
-        browser: true,
-        dedupe: ["svelte"],
-      }),
-      commonjs(),
-      typescript({
-        sourceMap: !production,
-        inlineSources: !production
-      }),
+		// If you have external dependencies installed from
+		// npm, you'll most likely need these plugins. In
+		// some cases you'll need additional configuration -
+		// consult the documentation for details:
+		// https://github.com/rollup/plugins/tree/master/packages/commonjs
+		resolve({
+			browser: true,
+			dedupe: ["svelte"],
+		}),
+		commonjs(),
+		typescript({
+			sourceMap: !production,
+			inlineSources: !production
+		}),
 
-      // In dev mode, call `npm run start` once
-      // the bundle has been generated
-      inp === "main" && !production && serve(),
+		// In dev mode, call `npm run start` once
+		// the bundle has been generated
+		inp === "main" && !production && serve(),
 
-      // Watch the `public` directory and refresh the
-      // browser on changes when not in production
-      inp === "main" && !production && livereload("public"),
+		// Watch the `public` directory and refresh the
+		// browser on changes when not in production
+		inp === "main" && !production && livereload("public"),
 
-      // If we're building for production (npm run build
-      // instead of npm run dev), minify
-      production && terser(),
+		// If we're building for production (npm run build
+		// instead of npm run dev), minify
+		production && terser(),
     ],
     watch: {
-      clearScreen: false,
+		clearScreen: false,
     },
   };
 
